@@ -1,0 +1,3 @@
+# Copia in terraform.tfvars e adatta. terraform.tfvars è in .gitignore.
+kubeconfig_path = "~/.kube/config-nuc"
+base_domain     = "lab.home.arpa"

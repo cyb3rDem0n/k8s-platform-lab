@@ -1,0 +1,5 @@
+# Valori volutamente minimi: i default del chart sono sensati.
+nginx:
+  service:
+    type: LoadBalancer            # MetalLB assegnerà un IP del pool
+    externalTrafficPolicy: Local  # conserva l'IP reale del client nei log di NGINX

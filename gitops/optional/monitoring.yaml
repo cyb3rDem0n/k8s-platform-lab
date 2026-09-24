@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: lab
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "CHANGE_ME"   # es. l'ultima 7x.y.z: vedi scripts/check-versions.sh
+    helm:
+      releaseName: kube-prometheus-stack   # determina i nomi dei Service e l'etichetta release usata dai ServiceMonitor
+      valuesObject:
+        grafana:
+          adminPassword: "cambiami-subito"   # esercizio: sostituiscilo con un SealedSecret (capitolo 11)
+        prometheus:
+          prometheusSpec:
+            retention: 7d
+            resources:
+              requests: { cpu: 200m, memory: 512Mi }
+        # componenti di controllo che su kubeadm ascoltano solo su localhost: disattivati per evitare falsi allarmi
+        kubeControllerManager: { enabled: false }
+        kubeScheduler: { enabled: false }
+        kubeEtcd: { enabled: false }
+        kubeProxy: { enabled: false }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true   # le CRD di prometheus-operator superano il limite di client-side apply

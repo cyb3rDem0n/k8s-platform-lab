@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k8s-platform-lab</title>
+<style>
+  :root {
+    --sky: #0e1726; --sky-2: #16233a; --ink: #e6e9ef; --dim: #93a0b5;
+    --amber: #ffb454; --line: #2a3a55; --bad: #ff7a7a; --good: #7ee0a1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--sky); color: var(--ink);
+    font: 16px/1.6 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; padding: 3.5rem 1.25rem 4rem; }
+  h1 { font-size: 2.1rem; line-height: 1.15; margin: 0 0 .4rem; font-weight: 600; }
+  p.lead { color: var(--dim); margin: 0 0 2.5rem; }
+  section { border-top: 1px solid var(--line); padding: 1.5rem 0; }
+  h2 { font-size: 1.15rem; margin: 0 0 .75rem; color: var(--amber); font-weight: 600; }
+  pre {
+    background: var(--sky-2); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 0;
+    font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap;
+  }
+  label { display: block; color: var(--dim); font-size: .9rem; margin: .75rem 0 .25rem; }
+  input, textarea {
+    width: 100%; background: var(--sky-2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: .6rem .7rem; font: inherit;
+  }
+  textarea { min-height: 5rem; resize: vertical; }
+  button {
+    margin-top: .9rem; background: var(--amber); color: #1b1200; border: 0; border-radius: 6px;
+    padding: .55rem 1.1rem; font: 600 1rem/1 inherit; cursor: pointer;
+  }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .ok { color: var(--good); } .err { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>k8s-platform-lab</h1>
+  <p class="lead">Frontend nginx, backend Java, un LLM locale. Ogni refresh può rispondere un Pod diverso.</p>
+
+  <section>
+    <h2>Saluto dal backend</h2>
+    <pre id="hello">…</pre>
+    <button id="again">Richiama</button>
+  </section>
+
+  <section>
+    <h2>Informazioni di configurazione</h2>
+    <pre id="info">…</pre>
+  </section>
+
+  <section>
+    <h2>Chiedi all'LLM del cluster</h2>
+    <label for="token">Token API (dal Secret del backend)</label>
+    <input id="token" type="password" autocomplete="off">
+    <label for="prompt">Domanda</label>
+    <textarea id="prompt">Spiega in due frasi cos'è un Pod in Kubernetes.</textarea>
+    <button id="ask">Invia</button>
+    <pre id="answer" style="margin-top:1rem">—</pre>
+  </section>
+</main>
+<script>
+  async function show(url, el, opts) {
+    el.textContent = "…";
+    try {
+      const r = await fetch(url, opts);
+      const t = await r.text();
+      let body; try { body = JSON.stringify(JSON.parse(t), null, 2); } catch { body = t; }
+      el.innerHTML = "";
+      const s = document.createElement("span");
+      s.className = r.ok ? "ok" : "err";
+      s.textContent = "HTTP " + r.status + "\n";
+      el.append(s, document.createTextNode(body));
+    } catch (e) { el.textContent = "Errore di rete: " + e; }
+  }
+  const $ = (id) => document.getElementById(id);
+  const hello = () => show("/api/hello", $("hello"));
+  $("again").onclick = hello;
+  $("ask").onclick = () => show("/api/ask", $("answer"), {
+    method: "POST", headers: { "X-Api-Token": $("token").value }, body: $("prompt").value
+  });
+  hello(); show("/api/info", $("info"));
+</script>
+</body>
+</html>

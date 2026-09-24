@@ -1,0 +1,14 @@
+---
+# Provisioning completo e IDEMPOTENTE di un cluster kubeadm.
+# Rilanciarlo non rompe nulla: ciò che è già a posto risulta "ok", non "changed".
+- name: Prepara tutti i nodi (sistema operativo, runtime, pacchetti Kubernetes)
+  hosts: k8s
+  roles:
+    - common
+    - containerd
+    - kube_tools
+
+- name: Inizializza il control plane e il CNI
+  hosts: control_plane
+  roles:
+    - cluster_init

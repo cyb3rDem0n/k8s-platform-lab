@@ -1,0 +1,22 @@
+# Pattern "app of apps": questa Application punta a una cartella che contiene ALTRE Application.
+# Aggiungere un'app al cluster = aggiungere un file in gitops/apps/ e fare commit.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: lab
+  source:
+    repoURL: ${gitops_repo_url}
+    targetRevision: ${gitops_revision}
+    path: gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

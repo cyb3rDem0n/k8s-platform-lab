@@ -1,0 +1,139 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $be := dict "ctx" . "component" "backend" -}}
+{{- $fe := dict "ctx" . "component" "frontend" -}}
+{{- $np := .Values.networkPolicy -}}
+{{- /* Stesse regole di k8s/apps/hello/base/network, parametrizzate. Vedi capitolo 7. */ -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-default-deny
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $be | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-allow-dns
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $be | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-backend-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $be | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "hello.selectorLabels" $be | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ $np.gatewayNamespace }} }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ $np.monitoringNamespace }} }
+        - podSelector:
+            matchLabels:
+              {{- include "hello.selectorLabels" $fe | nindent 14 }}
+        {{- if $np.allowDebugPods }}
+        - podSelector:
+            matchLabels: { lab.home.arpa/debug: "true" }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-backend-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $be | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "hello.selectorLabels" $be | nindent 6 }}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ $np.llmNamespace }} }
+          podSelector:
+            matchLabels: { app.kubernetes.io/name: ollama }
+      ports:
+        - { protocol: TCP, port: 11434 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $fe | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "hello.selectorLabels" $fe | nindent 6 }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ $np.gatewayNamespace }} }
+        {{- if $np.allowDebugPods }}
+        - podSelector:
+            matchLabels: { lab.home.arpa/debug: "true" }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "hello.selectorLabels" $be | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+{{- if $np.allowDebugPods }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hello.fullname" . }}-debug-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" $be | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: { lab.home.arpa/debug: "true" }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "hello.selectorLabels" $be | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "hello.selectorLabels" $fe | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+{{- end }}
+{{- end }}

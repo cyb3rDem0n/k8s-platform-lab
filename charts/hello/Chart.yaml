@@ -1,0 +1,14 @@
+# Chart "hello": la stessa applicazione di k8s/apps/hello, impacchettata con Helm (capitolo 5B).
+apiVersion: v2                 # formato dei chart di Helm 3 e Helm 4 (il formato v3 è ancora sperimentale)
+name: hello
+description: Backend Java + frontend nginx del k8s-platform-lab
+type: application
+version: 0.1.0                 # versione del CHART: cambia a ogni modifica del chart (SemVer)
+appVersion: "0.1.0"            # versione dell'APPLICAZIONE: tag di default delle immagini
+kubeVersion: ">=1.33.0-0"
+home: https://github.com/YOUR_GH_USER/k8s-platform-lab
+sources:
+  - https://github.com/YOUR_GH_USER/k8s-platform-lab
+maintainers:
+  - name: Giuseppe D'Agostino
+keywords: [java, nginx, gateway-api, tutorial]

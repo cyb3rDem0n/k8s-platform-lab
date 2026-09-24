@@ -1,0 +1,5 @@
+# Kustomize "component": un pezzo opzionale che un overlay può includere.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - servicemonitor.yaml

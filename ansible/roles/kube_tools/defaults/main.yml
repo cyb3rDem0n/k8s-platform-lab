@@ -1,0 +1,2 @@
+---
+kube_tools_packages: [kubelet, kubeadm, kubectl]

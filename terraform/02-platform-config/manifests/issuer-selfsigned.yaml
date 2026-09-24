@@ -1,0 +1,7 @@
+# Serve SOLO a firmare la CA radice: è l'uovo da cui nasce la gallina.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-bootstrap
+spec:
+  selfSigned: {}

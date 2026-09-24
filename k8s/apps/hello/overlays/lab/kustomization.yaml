@@ -1,0 +1,22 @@
+# Overlay dell'ambiente "lab" (il NUC). È il path che Argo CD sincronizza.
+# La CI aggiorna i tag qui sotto con `kustomize edit set image` a ogni build: è il "commit di deploy".
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  # - sealed-backend-secret.yaml   # decommenta dopo averlo generato (capitolo 11)
+# components:
+#   - ../../components/monitoring  # decommenta dopo aver installato kube-prometheus-stack (capitolo 13)
+images:
+  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-backend
+    newTag: "0.1.0"
+  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-frontend
+    newTag: "0.1.0"
+patches:
+  - target:
+      kind: ConfigMap
+      name: hello-backend-config
+    patch: |-
+      - op: replace
+        path: /data/APP_ENV
+        value: lab

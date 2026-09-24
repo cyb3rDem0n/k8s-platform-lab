@@ -1,0 +1,26 @@
+global:
+  domain: ${argocd_host}
+
+configs:
+  params:
+    # TLS terminato dal Gateway NGINX: argocd-server parla HTTP dentro al cluster.
+    server.insecure: true
+  cm:
+    # Più veloce del polling di default ogni 3 min durante il corso. Con i webhook Git scenderebbe a ~0.
+    timeout.reconciliation: 60s
+
+dex:
+  enabled: false        # nessun SSO nel lab; lo attiveremo con un IdP cloud nella parte successiva
+
+notifications:
+  enabled: false
+
+server:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+repoServer:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }

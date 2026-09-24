@@ -1,0 +1,11 @@
+# Capitolo 5: SOLO il nucleo dell'app, con i tag immagine giusti. Nessuna dipendenza da CRD esterne.
+#   kubectl apply -k k8s/learn/stage-05-core
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../apps/hello/base/core
+images:
+  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-backend
+    newTag: "0.1.0"
+  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-frontend
+    newTag: "0.1.0"

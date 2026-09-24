@@ -1,0 +1,37 @@
+{{- if .Values.tests.enabled }}
+{{- $be := dict "ctx" . "component" "backend" -}}
+{{- $fe := dict "ctx" . "component" "frontend" -}}
+# Eseguito da `helm test <release>`: verifica che backend e frontend rispondano DALL'INTERNO del cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "hello.fullname" . }}-test-connection
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hello.labels" (dict "ctx" . "component" "test") | nindent 4 }}
+    lab.home.arpa/debug: "true"   # autorizzato dalle NetworkPolicy del chart (allowDebugPods)
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image }}
+      command: ["sh", "-c"]
+      args:
+        - >-
+          set -e;
+          curl -fsS --retry 5 --retry-connrefused http://{{ include "hello.componentName" $be }}:8080/healthz/ready;
+          curl -fsS http://{{ include "hello.componentName" $be }}:8080/api/hello;
+          curl -fsS -o /dev/null http://{{ include "hello.componentName" $fe }}/healthz;
+          echo; echo "OK: backend e frontend raggiungibili"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+{{- end }}

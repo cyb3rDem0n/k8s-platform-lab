@@ -1,0 +1,45 @@
+---
+- name: Installa i pacchetti di base
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# Il kubelet, di default, rifiuta di partire con lo swap attivo: lo scheduler ragiona
+# su memoria "vera" e lo swap renderebbe imprevedibili le garanzie di QoS.
+- name: Disattiva lo swap ora
+  ansible.builtin.command: swapoff -a
+  when: ansible_swaptotal_mb | int > 0
+  changed_when: true
+
+- name: Disattiva lo swap al riavvio (commenta le righe swap in /etc/fstab)
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
+- name: Moduli kernel caricati al boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    mode: "0644"
+    content: |
+      overlay
+      br_netfilter
+
+- name: Carica i moduli kernel ora
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: [overlay, br_netfilter]
+  # Se preferisci zero collection esterne: ansible.builtin.command: "modprobe {{ item }}"
+
+- name: Parametri sysctl per il networking dei Pod
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-kubernetes.conf
+    mode: "0644"
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+  notify: Ricarica sysctl

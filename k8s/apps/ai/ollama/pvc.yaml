@@ -1,0 +1,12 @@
+# I modelli pesano GB: li teniamo su un volume persistente per non riscaricarli a ogni riavvio.
+# StorageClass "local-path" (installata da Terraform): un disco del nodo, niente replica.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 15Gi

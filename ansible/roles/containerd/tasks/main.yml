@@ -1,0 +1,44 @@
+---
+- name: Repository apt di Docker (solo per containerd.io)
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: "{{ containerd_repo_url }}"
+    suites: ["{{ ansible_distribution_release }}"]
+    components: [stable]
+    signed_by: "{{ containerd_repo_url }}/gpg"
+    state: present
+
+- name: Installa containerd
+  ansible.builtin.apt:
+    name: containerd.io
+    state: present
+    update_cache: true
+
+- name: Directory di configurazione
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+
+# Il pacchetto containerd.io arriva con il plugin CRI DISABILITATO (pensato per Docker).
+# Rigeneriamo la configurazione di default, che lo abilita.
+- name: Genera la configurazione di default (una sola volta)
+  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml && touch /etc/containerd/.generated-by-ansible
+  args:
+    creates: /etc/containerd/.generated-by-ansible
+  notify: Riavvia containerd
+
+# kubelet e runtime devono usare lo STESSO driver cgroup. Con systemd come init, si usa systemd.
+- name: Abilita SystemdCgroup per runc
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  notify: Riavvia containerd
+
+- name: Containerd avviato e abilitato al boot
+  ansible.builtin.systemd_service:
+    name: containerd
+    state: started
+    enabled: true

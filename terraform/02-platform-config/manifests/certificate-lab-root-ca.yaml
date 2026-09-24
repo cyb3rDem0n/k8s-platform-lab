@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-root-ca
+  namespace: cert-manager      # i ClusterIssuer CA leggono il Secret dal namespace di cert-manager
+spec:
+  isCA: true
+  commonName: k8s-platform-lab Root CA
+  secretName: lab-root-ca
+  duration: 87600h             # 10 anni: è la radice di fiducia del laboratorio
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io

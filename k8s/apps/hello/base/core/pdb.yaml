@@ -1,0 +1,11 @@
+# Durante manutenzioni volontarie (kubectl drain, upgrade del nodo) resta sempre almeno 1 backend.
+# Nota: su un cluster a nodo singolo un drain resterà bloccato da questo PDB — è il comportamento corretto.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hello-backend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-backend

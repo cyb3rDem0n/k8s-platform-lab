@@ -1,0 +1,16 @@
+# Step 2 dell'esposizione: LoadBalancer. Sul bare metal NESSUNO assegna l'IP esterno
+# (resta <pending>) finché non installi MetalLB: è MetalLB che fa il lavoro che nel cloud fa l'ELB/NLB.
+# Test:  kubectl -n hello get svc hello-frontend-lb   ->  EXTERNAL-IP 192.168.1.24x
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-frontend-lb
+  namespace: hello
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: hello-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

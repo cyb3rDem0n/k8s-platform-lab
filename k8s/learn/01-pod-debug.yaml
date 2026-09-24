@@ -1,0 +1,27 @@
+# kubectl apply -f 01-pod-debug.yaml && kubectl -n hello exec -it netshoot -- sh
+# Dentro:  curl -s hello-backend:8080/api/hello ; nslookup hello-backend
+# Attenzione: il namespace hello ha PSA "restricted" e una default-deny. Questo Pod è conforme a
+# "restricted" e porta l'etichetta lab.home.arpa/debug=true, che la policy "allow-debug-pods"
+# autorizza verso frontend e backend. NON riusare le etichette dell'app: il Service del frontend
+# selezionerebbe anche questo Pod e gli manderebbe traffico reale.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netshoot
+  namespace: hello
+  labels:
+    lab.home.arpa/debug: "true"
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: shell
+      image: curlimages/curl:8.20.0
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+  restartPolicy: Never

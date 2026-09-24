@@ -1,0 +1,13 @@
+---
+# Minor di Kubernetes (senza patch). Scelta: la penultima minor stabile (N-1) —
+# abbastanza matura da avere patch di stabilità, abbastanza recente da essere supportata a lungo.
+k8s_minor: "v1.36"
+
+# Rete dei Pod (deve coincidere con la configurazione di Calico) e rete dei Service.
+pod_network_cidr: "10.244.0.0/16"
+service_cidr: "10.96.0.0/12"
+
+calico_version: "v3.32.2"
+
+# Dove salvare il kubeconfig sulla TUA macchina.
+local_kubeconfig: "~/.kube/config-nuc"

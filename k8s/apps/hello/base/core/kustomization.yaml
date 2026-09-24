@@ -1,0 +1,14 @@
+# Il "nucleo" dell'applicazione: funziona da solo, senza Gateway API né NetworkPolicy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: hello
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - hpa.yaml
+  - pdb.yaml

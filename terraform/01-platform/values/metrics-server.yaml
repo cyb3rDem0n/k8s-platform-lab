@@ -1,0 +1,6 @@
+args:
+  # In un cluster kubeadm i certificati serving dei kubelet sono self-signed e non includono l'IP
+  # del nodo: metrics-server non riesce a verificarli. In laboratorio disabilitiamo la verifica.
+  # In produzione: serverTLSBootstrap: true nel KubeletConfiguration + approvazione dei CSR.
+  - --kubelet-insecure-tls
+  - --kubelet-preferred-address-types=InternalIP

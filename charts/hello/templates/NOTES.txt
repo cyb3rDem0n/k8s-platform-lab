@@ -1,0 +1,26 @@
+{{- $be := dict "ctx" . "component" "backend" -}}
+{{- $fe := dict "ctx" . "component" "frontend" -}}
+Release "{{ .Release.Name }}" installato nel namespace "{{ .Release.Namespace }}" (chart {{ include "hello.chart" . }}, app {{ .Chart.AppVersion }}).
+
+Verifica:
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "hello.componentName" $be }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if .Values.httpRoute.enabled }}
+
+Accesso dall'esterno (Gateway {{ .Values.httpRoute.gateway.namespace }}/{{ .Values.httpRoute.gateway.name }}):
+  https://{{ .Values.httpRoute.hostname }}/
+{{- else }}
+
+Accesso locale (httpRoute disabilitata):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "hello.componentName" $fe }} 8080:80
+  http://localhost:8080
+{{- end }}
+
+{{- with .Values.backend.existingSecret }}
+{{- if not (lookup "v1" "Secret" $.Release.Namespace .) }}
+
+Nota: il Secret "{{ . }}" non esiste (o non è verificabile, ad esempio con `helm template`):
+/api/ask risponderà 503 finché non lo crei.
+{{- end }}
+{{- end }}

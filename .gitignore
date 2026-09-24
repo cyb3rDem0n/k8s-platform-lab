@@ -1,0 +1,26 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+.terraform.lock.hcl.bak
+
+# Segreti e credenziali: MAI in Git
+*.key
+*.pem
+*.crt
+kubeconfig*
+config-nuc
+.env
+
+# Build
+app/backend/out/
+*.class
+*.jar
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

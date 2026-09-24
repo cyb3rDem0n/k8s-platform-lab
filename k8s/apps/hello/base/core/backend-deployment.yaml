@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-backend
+  labels:
+    app.kubernetes.io/name: hello-backend
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # al massimo 1 Pod in più durante l'aggiornamento
+      maxUnavailable: 0    # mai sotto il numero desiderato: zero downtime
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hello-backend
+        app.kubernetes.io/component: backend
+      annotations:
+        # Prometheus "classico" (senza operator) legge queste annotazioni; con l'operator si usa il ServiceMonitor.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: hello-backend
+      automountServiceAccountToken: false
+      # Deve essere > SHUTDOWN_DELAY + SHUTDOWN_GRACE, altrimenti il kubelet invia SIGKILL a metà.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: ghcr.io/YOUR_GH_USER/k8s-platform-lab-backend:latest   # sovrascritta dall'overlay
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: hello-backend-config
+          env:
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hello-backend-secret
+                  key: API_TOKEN
+                  optional: true   # senza Secret l'app parte comunque; /api/ask risponde 503
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi       # niente limit di CPU: evita il throttling (scelta discussa nel tutorial)
+          startupProbe:
+            httpGet: { path: /healthz/live, port: http }
+            periodSeconds: 2
+            failureThreshold: 30  # fino a 60s per partire, poi subentrano le altre probe
+          livenessProbe:
+            httpGet: { path: /healthz/live, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /healthz/ready, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp       # la JVM usa /tmp (hsperfdata, file temporanei)
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      topologySpreadConstraints:
+        # Su un singolo nodo è ininfluente; su un cluster multi-nodo distribuisce le repliche.
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: hello-backend

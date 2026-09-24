@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-frontend
+  labels:
+    app.kubernetes.io/name: hello-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hello-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

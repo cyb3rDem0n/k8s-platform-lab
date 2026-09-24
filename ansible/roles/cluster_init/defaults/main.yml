@@ -1,0 +1,2 @@
+---
+cluster_init_kubeadm_config_path: /etc/kubernetes/kubeadm-config.yaml

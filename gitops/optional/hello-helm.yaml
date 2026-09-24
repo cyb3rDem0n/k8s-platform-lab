@@ -1,0 +1,41 @@
+# La variante Helm dell'app, gestita da Argo CD (esercizio del capitolo 5B).
+# Argo CD usa Helm solo per RENDERE i manifest (helm template), poi li applica lui:
+# non esiste un "release Helm" nel cluster, e `helm list` non la mostrerà.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-helm
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: lab
+  source:
+    repoURL: https://github.com/YOUR_GH_USER/k8s-platform-lab.git
+    targetRevision: main
+    path: charts/hello
+    helm:
+      releaseName: hello
+      valueFiles:
+        - values-lab.yaml
+      valuesObject:
+        backend:
+          image:
+            tag: "0.1.0"
+        frontend:
+          image:
+            tag: "0.1.0"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hello-helm
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+    # Il chart non crea il Namespace (buona pratica): lo crea Argo CD, con le etichette di Pod Security.
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/warn: restricted

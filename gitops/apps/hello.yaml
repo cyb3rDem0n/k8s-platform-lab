@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: lab
+  source:
+    repoURL: https://github.com/YOUR_GH_USER/k8s-platform-lab.git
+    targetRevision: main
+    path: k8s/apps/hello/overlays/lab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hello
+  syncPolicy:
+    automated:
+      prune: true      # ciò che togli da Git viene tolto dal cluster
+      selfHeal: true   # ciò che cambi a mano nel cluster viene riportato allo stato di Git
+    syncOptions:
+      - CreateNamespace=false
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true   # anche durante il sync non tocca i campi ignorati (repliche dell'HPA)
+    retry:
+      limit: 5
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }
+  # L'HPA modifica .spec.replicas: senza questa regola Argo CD lo vedrebbe come "drift" e lo annullerebbe.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: hello-backend
+      jsonPointers:
+        - /spec/replicas

@@ -1,0 +1,11 @@
+# Base completa = nucleo + rete + routing. Ogni parte è applicabile anche da sola (vedi tutorial).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: k8s-platform-lab
+    includeSelectors: false
+resources:
+  - core
+  - network
+  - routing

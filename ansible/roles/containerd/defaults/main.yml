@@ -1,0 +1,4 @@
+---
+# containerd 2.x dal repository Docker: Ubuntu 24.04 fornisce ancora la 1.7,
+# mentre le minor recenti di Kubernetes richiedono containerd 2.
+containerd_repo_url: "https://download.docker.com/linux/ubuntu"

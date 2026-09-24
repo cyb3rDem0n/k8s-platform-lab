@@ -1,0 +1,6 @@
+# NetworkPolicy "default deny" + flussi consentiti. Richiede un CNI che le applichi (Calico).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: hello
+resources:
+  - networkpolicies.yaml

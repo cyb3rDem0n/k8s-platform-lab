@@ -1,0 +1,83 @@
+# Valori di default del chart. Ogni chiave è documentata qui: `helm show values` stampa questo file,
+# ed è la prima cosa che legge chi usa il chart. La struttura è validata da values.schema.json.
+
+# -- Sovrascrive il nome del chart nei nomi delle risorse.
+nameOverride: ""
+# -- Sovrascrive per intero il prefisso dei nomi (di default: nome del release, o release-chart).
+fullnameOverride: ""
+
+# -- Registry e proprietario delle immagini. scripts/set-repo-url.sh sostituisce il segnaposto.
+imageRegistry: ghcr.io/YOUR_GH_USER
+# -- Secret per registry privati, es. [{ name: ghcr-pull }]
+imagePullSecrets: []
+
+backend:
+  # -- Ignorato se autoscaling.enabled=true: in quel caso le repliche le decide l'HPA.
+  replicaCount: 2
+  image:
+    repository: k8s-platform-lab-backend
+    # -- Vuoto = usa appVersion del Chart.yaml.
+    tag: ""
+    pullPolicy: IfNotPresent
+  # -- Diventano variabili d'ambiente tramite una ConfigMap. Ogni modifica provoca un rollout (checksum).
+  config:
+    APP_ENV: helm
+    GREETING: "Ciao dal backend Java, installato con Helm"
+    OLLAMA_URL: http://ollama.ai.svc.cluster.local:11434
+    OLLAMA_MODEL: "qwen2.5:1.5b"
+    SHUTDOWN_DELAY_SECONDS: "5"
+    SHUTDOWN_GRACE_SECONDS: "10"
+  # -- Nome del Secret (creato fuori dal chart) con la chiave API_TOKEN. Opzionale: senza, /api/ask risponde 503.
+  existingSecret: hello-backend-secret
+  terminationGracePeriodSeconds: 30
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: k8s-platform-lab-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
+
+networkPolicy:
+  # -- Default deny su TUTTO il namespace del release + flussi consentiti. Usa un namespace dedicato.
+  enabled: true
+  gatewayNamespace: nginx-gateway
+  llmNamespace: ai
+  monitoringNamespace: monitoring
+  # -- Consente ai Pod con etichetta lab.home.arpa/debug=true (incluso il Pod di `helm test`) di chiamare l'app.
+  allowDebugPods: true
+
+httpRoute:
+  # -- Richiede le CRD del Gateway API e il Gateway della piattaforma (capitolo 6).
+  enabled: false
+  gateway:
+    name: lab-gateway
+    namespace: nginx-gateway
+  hostname: hello-helm.lab.home.arpa
+  httpsRedirect: true
+
+serviceMonitor:
+  # -- Richiede kube-prometheus-stack (capitolo 13).
+  enabled: false
+  interval: 30s
+  labels:
+    release: kube-prometheus-stack
+
+tests:
+  # -- Abilita il Pod eseguito da `helm test`.
+  enabled: true
+  image: curlimages/curl:8.20.0

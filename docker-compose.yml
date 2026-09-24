@@ -1,0 +1,28 @@
+# Sviluppo locale SENZA Kubernetes: verifica che le immagini funzionino prima di andare sul cluster.
+#   docker compose up --build   ->  http://localhost:8080
+# Per provare /api/ask:  docker compose --profile ai up --build  (scarica il modello al primo uso)
+services:
+  hello-backend:
+    build: ./app/backend
+    environment:
+      APP_ENV: compose
+      API_TOKEN: dev-token-solo-locale
+      OLLAMA_URL: http://ollama:11434
+    healthcheck:
+      # distroless non ha curl: il check lo fa il frontend; qui ci fidiamo del restart policy
+      disable: true
+    restart: unless-stopped
+
+  frontend:
+    build: ./app/frontend
+    ports: ["8080:8080"]
+    depends_on: [hello-backend]
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.12.6
+    profiles: ["ai"]
+    volumes: ["ollama:/root/.ollama"]
+
+volumes:
+  ollama: {}

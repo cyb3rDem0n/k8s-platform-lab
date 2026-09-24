@@ -1,0 +1,13 @@
+# Valori per l'ambiente "lab" (il NUC), dopo il capitolo 6: Gateway e TLS disponibili.
+#   helm upgrade --install hello charts/hello -n hello-helm -f charts/hello/values-lab.yaml
+backend:
+  config:
+    APP_ENV: lab-helm
+    GREETING: "Ciao dal backend Java, via Helm e Gateway API"
+    OLLAMA_URL: http://ollama.ai.svc.cluster.local:11434
+    OLLAMA_MODEL: "qwen2.5:1.5b"
+    SHUTDOWN_DELAY_SECONDS: "5"
+    SHUTDOWN_GRACE_SECONDS: "10"
+httpRoute:
+  enabled: true
+  hostname: hello-helm.lab.home.arpa

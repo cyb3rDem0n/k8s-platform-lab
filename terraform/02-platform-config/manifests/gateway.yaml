@@ -1,0 +1,31 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: lab-gateway
+  namespace: nginx-gateway
+  annotations:
+    # cert-manager vede questa annotazione e crea un Certificate per ogni listener HTTPS
+    # che ha hostname + certificateRefs. Il Secret risultante è lab-wildcard-tls.
+    cert-manager.io/cluster-issuer: lab-ca
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.${base_domain}"
+      allowedRoutes:
+        namespaces:
+          from: All     # nel lab qualunque namespace può agganciarsi; in produzione usa "Selector"
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.${base_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: lab-wildcard-tls
+      allowedRoutes:
+        namespaces:
+          from: All

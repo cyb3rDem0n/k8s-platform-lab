@@ -1,0 +1,9 @@
+# File esclusi da `helm package`
+.DS_Store
+.git/
+*.swp
+*.bak
+*.tmp
+.idea/
+.vscode/
+ci/

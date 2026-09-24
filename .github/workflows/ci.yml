@@ -1,0 +1,114 @@
+# Pipeline: valida -> costruisce le immagini -> aggiorna i tag nell'overlay (commit) -> Argo CD fa il deploy.
+# La CI NON ha credenziali del cluster: scrive solo in Git. È il cuore del modello "pull" di GitOps.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "k8s/apps/hello/overlays/lab/kustomization.yaml"]
+  pull_request:
+
+permissions:
+  contents: write     # per il commit di bump dei tag
+  packages: write     # per pubblicare su ghcr.io
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/k8s-platform-lab
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installa kustomize e kubeconform
+        run: |
+          curl -sL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz -C /usr/local/bin
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz -C /usr/local/bin
+      - name: Render + validazione schema dei manifest
+        run: |
+          for d in k8s/apps/hello/overlays/lab k8s/apps/ai/ollama k8s/apps/ai/agent-rbac; do
+            echo "::group::$d"
+            kustomize build "$d" | kubeconform -strict -summary -ignore-missing-schemas \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+            echo "::endgroup::"
+          done
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.3.0
+      - name: Helm lint + render + validazione del chart
+        run: |
+          helm lint --strict charts/hello
+          helm lint --strict charts/hello -f charts/hello/values-lab.yaml
+          for v in values.yaml values-lab.yaml; do
+            helm template hello charts/hello -n hello-helm -f charts/hello/$v \
+              | kubeconform -strict -summary -ignore-missing-schemas \
+                  -schema-location default \
+                  -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          done
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform fmt + validate
+        run: |
+          terraform fmt -check -recursive terraform/
+          for d in terraform/01-platform terraform/02-platform-config; do
+            (cd "$d" && terraform init -backend=false -input=false >/dev/null && terraform validate)
+          done
+      - name: Ansible lint
+        run: |
+          pip install --quiet ansible ansible-lint
+          cd ansible && ansible-lint --offline
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: meta
+        run: echo "tag=0.1.${{ github.run_number }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: app/${{ matrix.component }}
+          push: ${{ github.event_name == 'push' }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.tag }}
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.component }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          provenance: true
+          sbom: true
+
+  bump:
+    # Solo su main: aggiorna i tag nell'overlay. Argo CD vede il commit e fa il rollout.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installa kustomize
+        run: curl -sL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz -C /usr/local/bin
+      - name: Aggiorna i tag delle immagini
+        working-directory: k8s/apps/hello/overlays/lab
+        run: |
+          kustomize edit set image \
+            ${IMAGE_PREFIX}-backend=${IMAGE_PREFIX}-backend:${{ needs.build.outputs.tag }} \
+            ${IMAGE_PREFIX}-frontend=${IMAGE_PREFIX}-frontend:${{ needs.build.outputs.tag }}
+      - name: Commit e push
+        run: |
+          git config user.name  "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add k8s/apps/hello/overlays/lab/kustomization.yaml
+          git diff --cached --quiet && exit 0
+          git commit -m "deploy(lab): hello ${{ needs.build.outputs.tag }}"
+          git push

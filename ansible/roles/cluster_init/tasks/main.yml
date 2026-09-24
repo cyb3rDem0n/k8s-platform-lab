@@ -1,0 +1,87 @@
+---
+- name: Leggi la versione di kubeadm installata
+  ansible.builtin.command: kubeadm version -o short
+  register: cluster_init_kubeadm_version
+  changed_when: false
+
+- name: Scrivi la configurazione di kubeadm
+  ansible.builtin.template:
+    src: kubeadm-config.yaml.j2
+    dest: "{{ cluster_init_kubeadm_config_path }}"
+    mode: "0600"
+
+- name: Esegui kubeadm init (solo se il cluster non esiste già)
+  ansible.builtin.command: kubeadm init --config {{ cluster_init_kubeadm_config_path }} --upload-certs
+  args:
+    creates: /etc/kubernetes/admin.conf
+  register: cluster_init_kubeadm_result
+
+- name: Output di kubeadm init (vuoto se il cluster esisteva già)
+  ansible.builtin.debug:
+    var: cluster_init_kubeadm_result.stdout_lines | default([])
+
+- name: Directory ~/.kube dell'utente {{ ansible_user }}
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0700"
+
+- name: Kubeconfig dell'utente sul nodo
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    remote_src: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Calico — operatore (server-side apply, idempotente)
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply --server-side --force-conflicts
+    -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml
+  register: cluster_init_calico_op
+  changed_when: "'serverside-applied' in cluster_init_calico_op.stdout"
+
+- name: Attendi le CRD dell'operatore
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait --for condition=established --timeout=120s
+    crd/installations.operator.tigera.io crd/apiservers.operator.tigera.io
+  changed_when: false
+
+- name: Calico — configurazione di rete
+  ansible.builtin.template:
+    src: calico-custom-resources.yaml.j2
+    dest: /etc/kubernetes/calico-custom-resources.yaml
+    mode: "0644"
+
+- name: Calico — applica la configurazione
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f /etc/kubernetes/calico-custom-resources.yaml
+  register: cluster_init_calico_cr
+  changed_when: "'configured' in cluster_init_calico_cr.stdout or 'created' in cluster_init_calico_cr.stdout"
+
+# Cluster a nodo singolo: il control plane deve accettare anche i Pod applicativi.
+- name: Rimuovi il taint NoSchedule dal control plane
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ inventory_hostname }}
+    node-role.kubernetes.io/control-plane:NoSchedule-
+  register: cluster_init_untaint
+  changed_when: cluster_init_untaint.rc == 0
+  failed_when: cluster_init_untaint.rc != 0 and 'not found' not in cluster_init_untaint.stderr
+
+- name: Attendi che il nodo sia Ready (Calico operativo)
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait --for=condition=Ready
+    node/{{ inventory_hostname }} --timeout=300s
+  changed_when: false
+
+- name: Scarica il kubeconfig sulla macchina di controllo
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ local_kubeconfig | expanduser }}"
+    flat: true
+
+- name: Promemoria
+  ansible.builtin.debug:
+    msg: "Cluster pronto. Sul tuo PC: export KUBECONFIG={{ local_kubeconfig }} && kubectl get nodes -o wide"

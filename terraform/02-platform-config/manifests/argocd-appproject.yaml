@@ -1,0 +1,39 @@
+# Un AppProject delimita COSA le Application possono fare: da quali repo leggere,
+# in quali namespace scrivere, quali tipi di risorse cluster-wide creare.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lab
+  namespace: argocd
+spec:
+  description: Applicazioni del k8s-platform-lab
+  sourceRepos:
+    - ${gitops_repo_url}
+    - https://bitnami-labs.github.io/sealed-secrets
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: hello
+    - server: https://kubernetes.default.svc
+      namespace: hello-helm        # variante Helm dell'app (capitolo 5B)
+    - server: https://kubernetes.default.svc
+      namespace: ai
+    - server: https://kubernetes.default.svc
+      namespace: kube-system       # sealed-secrets controller
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: argocd            # le Application figlie vivono qui
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration

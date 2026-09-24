@@ -1,0 +1,29 @@
+---
+# Repository ufficiale pkgs.k8s.io: UN repository per ogni minor. Cambiare minor = cambiare repo,
+# ed è voluto: gli upgrade di minor si fanno in modo esplicito (kubeadm upgrade), mai per sbaglio.
+- name: Repository apt di Kubernetes {{ k8s_minor }}
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: [deb]
+    uris: "https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/"
+    suites: ["/"]
+    signed_by: "https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/Release.key"
+    state: present
+
+- name: Installa kubelet, kubeadm, kubectl
+  ansible.builtin.apt:
+    name: "{{ kube_tools_packages }}"
+    state: present
+    update_cache: true
+
+# "hold": un `apt upgrade` distratto non deve aggiornare Kubernetes sotto i piedi del cluster.
+- name: Blocca le versioni (apt-mark hold)
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ kube_tools_packages }}"
+
+- name: Kubelet abilitato (andrà in crash-loop finché kubeadm init non lo configura, è normale)
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: true

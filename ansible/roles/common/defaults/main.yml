@@ -1,0 +1,10 @@
+---
+common_packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gpg
+  - conntrack      # richiesto da kube-proxy
+  - socat          # richiesto da kubectl port-forward
+  - ipset
+  - jq

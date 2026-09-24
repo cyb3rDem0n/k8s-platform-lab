@@ -1,0 +1,146 @@
+# Modello "default deny": tutto è vietato, poi apriamo solo i flussi necessari.
+# Richiede un CNI che implementi le NetworkPolicy (Calico sì, Flannel no).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# Tutti i Pod del namespace possono risolvere nomi DNS (CoreDNS in kube-system).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Il data plane NGINX del Gateway (namespace nginx-gateway) può raggiungere frontend e backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-gateway
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: ["hello-frontend", "hello-backend"]
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: nginx-gateway }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Il frontend (reverse proxy /api) può parlare col backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-to-backend
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: hello-backend }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: hello-frontend }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-egress-to-backend
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: hello-frontend }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: hello-backend }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Il backend può chiamare SOLO Ollama nel namespace ai.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-egress-to-llm
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: hello-backend }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ai }
+          podSelector:
+            matchLabels: { app.kubernetes.io/name: ollama }
+      ports:
+        - { protocol: TCP, port: 11434 }
+---
+# Prometheus (namespace monitoring) può leggere /metrics del backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-metrics-scrape
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: hello-backend }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Pod di debug (etichetta lab.home.arpa/debug=true): possono chiamare frontend e backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-debug-pods-egress
+spec:
+  podSelector:
+    matchLabels: { lab.home.arpa/debug: "true" }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["hello-frontend", "hello-backend"]
+      ports: [{ protocol: TCP, port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-debug-pods-ingress
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: ["hello-frontend", "hello-backend"]
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { lab.home.arpa/debug: "true" }
+      ports: [{ protocol: TCP, port: 8080 }]

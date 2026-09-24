@@ -1,0 +1,18 @@
+# Step 1 dell'esposizione: NodePort.
+# kube-proxy apre la porta 30080 su OGNI nodo e la inoltra ai Pod del frontend.
+# Test dal tuo PC:  curl http://<IP-DEL-NUC>:30080/api/hello
+# Limiti: porte 30000-32767, nessun IP stabile se hai più nodi, nessun TLS, nessun routing per host/path.
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-frontend-nodeport
+  namespace: hello
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: hello-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      nodePort: 30080

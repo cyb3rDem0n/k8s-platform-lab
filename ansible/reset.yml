@@ -1,0 +1,38 @@
+---
+# DISTRUGGE il cluster e riporta il nodo allo stato "pacchetti installati, nessun cluster".
+# Serve per provare che tutto sia ricostruibile da zero:  ansible-playbook reset.yml -e confirm=yes
+- name: Reset del cluster kubeadm
+  hosts: k8s
+  tasks:
+    - name: Richiedi conferma esplicita
+      ansible.builtin.assert:
+        that: confirm | default('no') == 'yes'
+        fail_msg: "Operazione distruttiva. Rilancia con -e confirm=yes"
+
+    - name: Esegui kubeadm reset
+      ansible.builtin.command: kubeadm reset --force
+      changed_when: true
+
+    - name: Rimuovi configurazione CNI, kubeconfig e dati dei volumi local-path
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/cni/net.d
+        - /root/.kube
+        - "/home/{{ ansible_user }}/.kube"
+        - /opt/local-path-provisioner
+
+    - name: Svuota le regole nftables/iptables lasciate da kube-proxy e Calico
+      ansible.builtin.shell: |
+        set -o pipefail
+        nft flush ruleset || true
+        iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Riavvia containerd
+      ansible.builtin.systemd_service:
+        name: containerd
+        state: restarted

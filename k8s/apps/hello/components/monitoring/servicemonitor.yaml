@@ -1,0 +1,15 @@
+# CRD di prometheus-operator: esiste SOLO dopo aver installato kube-prometheus-stack.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello-backend
+  labels:
+    release: kube-prometheus-stack   # il selettore di default dell'istanza Prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-backend
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

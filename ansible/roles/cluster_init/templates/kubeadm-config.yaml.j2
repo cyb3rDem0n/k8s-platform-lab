@@ -1,0 +1,31 @@
+# Generato da Ansible. API kubeadm v1beta4 (Kubernetes >= 1.31).
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: {{ ansible_default_ipv4.address }}
+  bindPort: 6443
+nodeRegistration:
+  name: {{ inventory_hostname }}
+  criSocket: unix:///run/containerd/containerd.sock
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: {{ cluster_init_kubeadm_version.stdout | trim }}
+clusterName: k8s-platform-lab
+# Endpoint stabile del control plane: oggi è l'IP del NUC; con più control plane diventerebbe un VIP/DNS.
+controlPlaneEndpoint: {{ ansible_default_ipv4.address }}:6443
+networking:
+  podSubnet: {{ pod_network_cidr }}
+  serviceSubnet: {{ service_cidr }}
+apiServer:
+  certSANs:
+    - {{ ansible_default_ipv4.address }}
+    - {{ inventory_hostname }}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: nftables      # backend moderno di kube-proxy; "iptables" resta il fallback compatibile

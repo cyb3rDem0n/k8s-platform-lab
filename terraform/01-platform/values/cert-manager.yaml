@@ -1,0 +1,9 @@
+crds:
+  enabled: true      # le CRD le installa il chart (e le mantiene aggiornate)
+  keep: true         # ...ma non le cancella se disinstalli: cancellarle eliminerebbe tutti i Certificate
+config:
+  apiVersion: controller.config.cert-manager.io/v1alpha1
+  kind: ControllerConfiguration
+  enableGatewayAPI: true
+resources:
+  requests: { cpu: 10m, memory: 64Mi }

@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ollama-ingress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: ollama }
+  policyTypes: ["Ingress"]
+  ingress:
+    # dal backend dell'app hello
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: hello }
+          podSelector:
+            matchLabels: { app.kubernetes.io/name: hello-backend }
+      ports: [{ protocol: TCP, port: 11434 }]
+    # dal Job di pull del modello (stesso namespace)
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: ollama-pull-model }
+      ports: [{ protocol: TCP, port: 11434 }]
+    # dall'operatore k8sgpt, se installato (capitolo 12)
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: k8sgpt-operator-system }
+      ports: [{ protocol: TCP, port: 11434 }]
