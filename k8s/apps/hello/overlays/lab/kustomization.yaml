@@ -3,20 +3,22 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../base
+- ../../base
   # - sealed-backend-secret.yaml   # decommenta dopo averlo generato (capitolo 11)
 # components:
 #   - ../../components/monitoring  # decommenta dopo aver installato kube-prometheus-stack (capitolo 13)
 images:
-  - name: ghcr.io/cyb3rdem0n/k8s-platform-lab-backend
-    newTag: "0.1.0"
-  - name: ghcr.io/cyb3rdem0n/k8s-platform-lab-frontend
-    newTag: "0.1.0"
+- name: ghcr.io/cyb3rdem0n/k8s-platform-lab-backend
+  newName: ghcr.io/cyb3rdem0n/k8s-platform-lab-backend
+  newTag: 0.1.2-4bd3828
+- name: ghcr.io/cyb3rdem0n/k8s-platform-lab-frontend
+  newName: ghcr.io/cyb3rdem0n/k8s-platform-lab-frontend
+  newTag: 0.1.2-4bd3828
 patches:
-  - target:
-      kind: ConfigMap
-      name: hello-backend-config
-    patch: |-
-      - op: replace
-        path: /data/APP_ENV
-        value: lab
+- patch: |-
+    - op: replace
+      path: /data/APP_ENV
+      value: lab
+  target:
+    kind: ConfigMap
+    name: hello-backend-config
