@@ -8,9 +8,9 @@ resources:
 # components:
 #   - ../../components/monitoring  # decommenta dopo aver installato kube-prometheus-stack (capitolo 13)
 images:
-  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-backend
+  - name: ghcr.io/cyb3rdem0n/k8s-platform-lab-backend
     newTag: "0.1.0"
-  - name: ghcr.io/YOUR_GH_USER/k8s-platform-lab-frontend
+  - name: ghcr.io/cyb3rdem0n/k8s-platform-lab-frontend
     newTag: "0.1.0"
 patches:
   - target:

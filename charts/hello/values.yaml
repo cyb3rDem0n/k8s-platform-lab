@@ -7,7 +7,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 # -- Registry e proprietario delle immagini. scripts/set-repo-url.sh sostituisce il segnaposto.
-imageRegistry: ghcr.io/YOUR_GH_USER
+imageRegistry: ghcr.io/cyb3rdem0n
 # -- Secret per registry privati, es. [{ name: ghcr-pull }]
 imagePullSecrets: []
 

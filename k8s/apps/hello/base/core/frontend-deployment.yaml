@@ -28,7 +28,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: nginx
-          image: ghcr.io/YOUR_GH_USER/k8s-platform-lab-frontend:latest
+          image: ghcr.io/cyb3rdem0n/k8s-platform-lab-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

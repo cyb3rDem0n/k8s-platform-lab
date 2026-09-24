@@ -31,7 +31,7 @@ variable "enable_gitops" {
 variable "gitops_repo_url" {
   description = "URL HTTPS del TUO repository Git (fork di questo)."
   type        = string
-  default     = "https://github.com/YOUR_GH_USER/k8s-platform-lab.git"
+  default     = "https://github.com/cyb3rdem0n/k8s-platform-lab.git"
 }
 
 variable "gitops_revision" {

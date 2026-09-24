@@ -6,9 +6,9 @@ type: application
 version: 0.1.0                 # versione del CHART: cambia a ogni modifica del chart (SemVer)
 appVersion: "0.1.0"            # versione dell'APPLICAZIONE: tag di default delle immagini
 kubeVersion: ">=1.33.0-0"
-home: https://github.com/YOUR_GH_USER/k8s-platform-lab
+home: https://github.com/cyb3rdem0n/k8s-platform-lab
 sources:
-  - https://github.com/YOUR_GH_USER/k8s-platform-lab
+  - https://github.com/cyb3rdem0n/k8s-platform-lab
 maintainers:
   - name: Giuseppe D'Agostino
 keywords: [java, nginx, gateway-api, tutorial]

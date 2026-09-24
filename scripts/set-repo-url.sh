@@ -2,7 +2,9 @@
 # Sostituisce il segnaposto YOUR_GH_USER con il tuo utente/organizzazione GitHub in tutto il repo.
 # Uso: scripts/set-repo-url.sh mio-utente
 set -euo pipefail
-user="${1:?Uso: $0 <utente-github>}"
+# Tutto in minuscolo: i nomi delle immagini OCI (ghcr.io/<utente>/...) devono esserlo,
+# e gli URL di GitHub non distinguono maiuscole e minuscole.
+user=$(printf '%s' "${1:?Uso: $0 <utente-github>}" | tr '[:upper:]' '[:lower:]')
 cd "$(dirname "$0")/.."
 files=$(grep -rl --exclude-dir=.git --exclude=set-repo-url.sh --exclude='*.md' 'YOUR_GH_USER' . || true)
 [ -z "$files" ] && { echo "Nessun segnaposto trovato: già fatto?"; exit 0; }

@@ -3,4 +3,4 @@ kubeconfig_path = "~/.kube/config-nuc"
 base_domain     = "lab.home.arpa"
 metallb_address_range = "192.168.1.240-192.168.1.249"
 enable_gitops         = false   # true dal capitolo 10
-gitops_repo_url       = "https://github.com/YOUR_GH_USER/k8s-platform-lab.git"
+gitops_repo_url       = "https://github.com/cyb3rdem0n/k8s-platform-lab.git"

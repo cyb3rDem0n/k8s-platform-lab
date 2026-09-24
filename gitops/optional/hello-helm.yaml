@@ -13,7 +13,7 @@ metadata:
 spec:
   project: lab
   source:
-    repoURL: https://github.com/YOUR_GH_USER/k8s-platform-lab.git
+    repoURL: https://github.com/cyb3rdem0n/k8s-platform-lab.git
     targetRevision: main
     path: charts/hello
     helm:
